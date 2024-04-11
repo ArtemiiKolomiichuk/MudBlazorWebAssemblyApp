@@ -1,0 +1,102 @@
+﻿@page "/weather"
+@using System.Collections.ObjectModel
+@using System.Linq
+@inject IDialogService DialogService
+@using MudBlazorWebAssemblyApp.Client.Components
+
+<PageTitle>Articles</PageTitle>
+
+<MudButton OnClick="@(() => AddItem(null))" Color="@Color.Success" Class="add-item-btn">Add Item</MudButton>
+<MudText Typo="Typo.h3" GutterBottom="true">Articles</MudText>
+
+@if (articles == null)
+{
+    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+}
+else
+{
+    <MudDataGrid T="Article" Items="articles" Hover="true" Striped="true" Bordered="true" SortMode="SortMode.Single" Elevation="0">
+        <Columns>
+            <PropertyColumn Property="x => x.title" Title="Title"/>
+            <PropertyColumn Property="x => x.author" Title="Author" />
+            <PropertyColumn Property="x => x.authorUsername" Title="Author Username" />
+            <PropertyColumn Property="x => DateToString(x.publishingDate)" Title="Published" />
+            <TemplateColumn Title="Actions" SortBy="@(x => (x.editable ? "1" : "0"))">
+                <CellTemplate>
+                    @if (context.Item.editable)
+                    {
+                        <MudButton OnClick="@((e) => ShowDeleteArticleForm(context.Item))" Color="Color.Error">Delete</MudButton>
+                    }
+                    else
+                    {
+                        
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="Article" PageSizeOptions="new int[]{10, 20}" />
+        </PagerContent>
+    </MudDataGrid>
+}
+
+
+@code {
+    private ObservableCollection<Article>? articles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var Http = new HttpClient();
+        var articles = await Http.GetFromJsonAsync<Article[]>("http://localhost:3000/articles");
+        if(articles != null)
+        {
+            this.articles = new ObservableCollection<Article>(articles);
+        }
+        else
+        {
+            this.articles = new ObservableCollection<Article>();
+        }
+    }
+    string DateToString(DateTime date)
+    {
+        return date.ToString("dd.MM.yyyy HH:mm");
+    }
+
+    void AddItem(Article? article)
+    {
+        articles?.Add(article);
+    }
+
+    void RemoveItem(Article article)
+    {
+        articles?.RemoveAt(articles.IndexOf(article));
+    }
+
+    async void ShowDeleteArticleForm(Article article)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Do you really want to delete these records? This process cannot be undone.");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<Dialog>("Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            RemoveItem(article);
+        }
+    }
+
+    private class Article
+    {
+        public string _id { get; set; } = "";
+        public string title { get; set; } = "";
+        public string content { get; set; } = "";
+        public string author { get; set; } = "";
+        public string authorUsername { get; set; } = "";
+        public DateTime publishingDate { get; set; }
+        public bool editable => authorUsername == "3";
+    }
+}
