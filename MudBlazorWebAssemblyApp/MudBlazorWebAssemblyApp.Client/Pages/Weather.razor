@@ -1,5 +1,6 @@
 ﻿@page "/weather"
 @using System.Collections.ObjectModel
+
 @using System.Linq
 @inject IDialogService DialogService
 @using MudBlazorWebAssemblyApp.Client.Components
@@ -42,7 +43,7 @@ else
 
 
 @code {
-    private ObservableCollection<Article>? articles;
+    private ObservableCollection<Article> articles;
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,6 +71,7 @@ else
     void RemoveItem(Article article)
     {
         articles?.RemoveAt(articles.IndexOf(article));
+        StateHasChanged();
     }
 
     async void ShowDeleteArticleForm(Article article)
