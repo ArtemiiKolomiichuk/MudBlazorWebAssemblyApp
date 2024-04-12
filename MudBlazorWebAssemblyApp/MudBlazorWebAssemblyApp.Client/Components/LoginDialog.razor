@@ -32,8 +32,9 @@
                 Snackbar.Add("Incorrect login or password!", Severity.Error);
                 return;
             }
-            
+
             MudDialog.Close(DialogResult.Ok("Logged in"));
+            StateHasChanged();
         }
     }
 

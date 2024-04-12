@@ -1,4 +1,4 @@
-﻿@page "/weather"
+﻿@page "/"
 @using System.Collections.ObjectModel
 @using System.Linq
 @inject IDialogService DialogService
@@ -10,7 +10,12 @@
 <PageTitle>Articles</PageTitle>
 
 
-<MudText Typo="Typo.h3" GutterBottom="true">Articles  <MudButton OnClick="@(() => ShowArticleDialog(null))" Color="@Color.Success" Variant="Variant.Filled" Class="add-item-btn">Add Item</MudButton></MudText>
+<MudText Typo="Typo.h3" GutterBottom="true">Articles  
+    @if (!string.IsNullOrWhiteSpace(AuthService.UserName))
+    {
+        <MudButton OnClick="@(() => ShowArticleDialog(null))" Color="@Color.Success" Variant="Variant.Filled" Class="add-item-btn">Add Item</MudButton>
+    }
+</MudText>
 
 @if (articles == null)
 {
