@@ -1,9 +1,10 @@
 ﻿@page "/weather"
 @using System.Collections.ObjectModel
-
 @using System.Linq
 @inject IDialogService DialogService
 @using MudBlazorWebAssemblyApp.Client.Components
+@inject MudBlazorWebAssemblyApp.Client.AuthService AuthService
+@inject ILogger<Weather> Logger
 
 <PageTitle>Articles</PageTitle>
 
@@ -18,7 +19,7 @@ else
 {
     <MudDataGrid T="Article" Items="articles" Hover="true" Striped="true" Bordered="true" SortMode="SortMode.Single" Elevation="0">
         <Columns>
-            @if (true) //admin
+            @if (AuthService.UserName == "admin")
             {
                 <PropertyColumn Property="x => x._id" Title="ID" />
             }
@@ -45,7 +46,7 @@ else
 
 
 @code {
-    private ObservableCollection<Article> articles;
+    private ObservableCollection<Article> articles = new ObservableCollection<Article>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -55,9 +56,9 @@ else
         {
             this.articles = new ObservableCollection<Article>(articles);
         }
-        else
+        foreach(var article in this.articles)
         {
-            this.articles = new ObservableCollection<Article>();
+            article.AuthService = AuthService;
         }
     }
 
@@ -68,13 +69,13 @@ else
 
     void AddItem(Article article)
     {
-        articles?.Add(article);
+        articles.Add(article);
         StateHasChanged();
     }
 
     void RemoveItem(Article article)
     {
-        articles?.RemoveAt(articles.IndexOf(article));
+        articles.RemoveAt(articles.IndexOf(article));
         StateHasChanged();
     }
 
@@ -114,6 +115,7 @@ else
         {
             article = new Article();
             article.publishingDate = DateTime.Now;
+            article.authorUsername = AuthService.UserName;
         }
         else
         {
@@ -139,6 +141,7 @@ else
             article = result.Data as Article;
             if (article != null)
             {
+                article.AuthService = AuthService;
                 if (article._id == "")
                 {
                     AddItem(article);
@@ -153,12 +156,14 @@ else
 
     public record Article
     {
+        public AuthService AuthService { get; set; }
+
         public string _id { get; set; } = "";
         public string title { get; set; } = "";
         public string content { get; set; } = "";
         public string author { get; set; } = "";
         public string authorUsername { get; set; } = "";
         public DateTime publishingDate { get; set; }
-        public bool editable => authorUsername == "3";
+        public bool editable => authorUsername == "admin" || authorUsername == AuthService.UserName;
     }
 }
