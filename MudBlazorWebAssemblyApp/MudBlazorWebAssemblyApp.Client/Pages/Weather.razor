@@ -7,8 +7,8 @@
 
 <PageTitle>Articles</PageTitle>
 
-<MudButton OnClick="@(() => AddItem(null))" Color="@Color.Success" Class="add-item-btn">Add Item</MudButton>
-<MudText Typo="Typo.h3" GutterBottom="true">Articles</MudText>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Articles  <MudButton OnClick="@(() => ShowArticleDialog(null))" Color="@Color.Success" Variant="Variant.Filled" Class="add-item-btn">Add Item</MudButton></MudText>
 
 @if (articles == null)
 {
@@ -21,16 +21,14 @@ else
             <PropertyColumn Property="x => x.title" Title="Title"/>
             <PropertyColumn Property="x => x.author" Title="Author" />
             <PropertyColumn Property="x => x.authorUsername" Title="Author Username" />
+            <PropertyColumn Property="x => x.content" Title="Content" />
             <PropertyColumn Property="x => DateToString(x.publishingDate)" Title="Published" />
             <TemplateColumn Title="Actions" SortBy="@(x => (x.editable ? "1" : "0"))">
                 <CellTemplate>
                     @if (context.Item.editable)
                     {
-                        <MudButton OnClick="@((e) => ShowDeleteArticleForm(context.Item))" Color="Color.Error">Delete</MudButton>
-                    }
-                    else
-                    {
-                        
+                        <MudButton OnClick="@((e) => ShowDeleteArticleForm(context.Item))" Variant="Variant.Filled" Color="Color.Error">Delete</MudButton>
+                        <MudButton OnClick="@((e) => ShowArticleDialog(context.Item))" Variant="Variant.Filled" Color="Color.Primary">Edit</MudButton>
                     }
                 </CellTemplate>
             </TemplateColumn>
@@ -58,14 +56,16 @@ else
             this.articles = new ObservableCollection<Article>();
         }
     }
-    string DateToString(DateTime date)
+
+    public static string DateToString(DateTime date)
     {
         return date.ToString("dd.MM.yyyy HH:mm");
     }
 
-    void AddItem(Article? article)
+    void AddItem(Article article)
     {
         articles?.Add(article);
+        StateHasChanged();
     }
 
     void RemoveItem(Article article)
@@ -74,15 +74,28 @@ else
         StateHasChanged();
     }
 
+    void ChangeItem(Article article)
+    {
+        var articleOriginal = articles.FirstOrDefault(x => x._id == article._id);
+        if(articleOriginal == null)
+        {
+            throw new Exception("Article not found");
+            return;
+        }
+        var index = articles.IndexOf(articleOriginal);
+        articles[index] = article;
+        StateHasChanged();
+    }
+
     async void ShowDeleteArticleForm(Article article)
     {
         var parameters = new DialogParameters();
-        parameters.Add("ContentText", "Do you really want to delete these records? This process cannot be undone.");
+        parameters.Add("ContentText", "Do you really want to delete this article? This process cannot be undone.");
         parameters.Add("ButtonText", "Delete");
         parameters.Add("Color", Color.Error);
 
         var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
-        var dialog = await DialogService.ShowAsync<Dialog>("Delete", parameters, options);
+        var dialog = await DialogService.ShowAsync<DialogTextContent>("Delete", parameters, options);
         var result = await dialog.Result;
 
         if (!result.Canceled)
@@ -91,7 +104,50 @@ else
         }
     }
 
-    private class Article
+    async void ShowArticleDialog(Article? article)
+    {
+        if(article == null)
+        {
+            article = new Article();
+            article.publishingDate = DateTime.Now;
+        }
+        else
+        {
+            article = new Article()
+            {
+                _id = article._id,
+                title = article.title,
+                content = article.content,
+                author = article.author,
+                authorUsername = article.authorUsername,
+                publishingDate = article.publishingDate
+            };
+        }
+        var parameters = new DialogParameters();
+        parameters.Add("article", article);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ArticleDialog>(article._id == "" ? "Add article" : "Edit article" , parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            article = result.Data as Article;
+            if (article != null)
+            {
+                if (article._id == "")
+                {
+                    AddItem(article);
+                }
+                else
+                {
+                    ChangeItem(article);
+                }
+            }
+        }
+    }
+
+    public record Article
     {
         public string _id { get; set; } = "";
         public string title { get; set; } = "";

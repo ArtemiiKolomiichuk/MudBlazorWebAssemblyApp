@@ -1,0 +1,26 @@
+﻿@using static MudBlazorWebAssemblyApp.Client.Pages.Weather
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField Label="Title" @bind-Value="article.title" />
+        <MudTextField Label="Author" @bind-Value="article.author" />
+        <MudTextField Label="Author Username" @bind-Value="article.authorUsername" Disabled="true"/>
+        <MudTextField Label="Published" Value="@(DateToString(article.publishingDate))" Disabled="true" />
+        <MudTextField Label="Content" @bind-Value="article.content" Multiline="true" Lines="5" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Submit">@(Edit ? "Save" : "Add")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public Article article { get; set; }
+
+    private bool Edit => article._id != "";
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(article));
+    void Cancel() => MudDialog.Cancel();
+}
