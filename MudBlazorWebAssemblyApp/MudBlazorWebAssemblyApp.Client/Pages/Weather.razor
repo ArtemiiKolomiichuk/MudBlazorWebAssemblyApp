@@ -18,6 +18,10 @@ else
 {
     <MudDataGrid T="Article" Items="articles" Hover="true" Striped="true" Bordered="true" SortMode="SortMode.Single" Elevation="0">
         <Columns>
+            @if (true) //admin
+            {
+                <PropertyColumn Property="x => x._id" Title="ID" />
+            }
             <PropertyColumn Property="x => x.title" Title="Title"/>
             <PropertyColumn Property="x => x.author" Title="Author" />
             <PropertyColumn Property="x => x.authorUsername" Title="Author Username" />
@@ -79,7 +83,7 @@ else
         var articleOriginal = articles.FirstOrDefault(x => x._id == article._id);
         if(articleOriginal == null)
         {
-            throw new Exception("Article not found");
+            AddItem(article);
             return;
         }
         var index = articles.IndexOf(articleOriginal);
