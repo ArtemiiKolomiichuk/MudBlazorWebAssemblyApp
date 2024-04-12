@@ -3,6 +3,7 @@
 @using System.Linq
 @inject IDialogService DialogService
 @using MudBlazorWebAssemblyApp.Client.Components
+@inject IJSRuntime JSRuntime
 @inject MudBlazorWebAssemblyApp.Client.AuthService AuthService
 @inject ILogger<Weather> Logger
 
@@ -67,29 +68,74 @@ else
         return date.ToString("dd.MM.yyyy HH:mm");
     }
 
-    void AddItem(Article article)
+    private HttpClient JsonClient
     {
-        articles.Add(article);
-        StateHasChanged();
-    }
-
-    void RemoveItem(Article article)
-    {
-        articles.RemoveAt(articles.IndexOf(article));
-        StateHasChanged();
-    }
-
-    void ChangeItem(Article article)
-    {
-        var articleOriginal = articles.FirstOrDefault(x => x._id == article._id);
-        if(articleOriginal == null)
+        get
         {
-            AddItem(article);
-            return;
+            var client = AuthService.Client;
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            return client;
         }
-        var index = articles.IndexOf(articleOriginal);
-        articles[index] = article;
-        StateHasChanged();
+    }
+
+    async void AddItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles/" : "http://localhost:3000/user/";
+        var res = await JsonClient.PostAsJsonAsync(route, article);
+        if(res.IsSuccessStatusCode)
+        {
+            var str = await res.Content.ReadAsStringAsync();
+            Logger.LogInformation(str);
+            Logger.LogInformation((str.LastIndexOf("{\"_id\":\"")).ToString());
+            Logger.LogInformation((str.IndexOf("\",\"")).ToString());
+            var id = str[(str.LastIndexOf("{\"_id\":\"") + 8)..(str.IndexOf("\",\""))];
+            Logger.LogInformation(id);
+            article._id = id;
+            articles.Add(article);
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error adding article");
+        }
+    }
+
+    async void RemoveItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles" : "http://localhost:3000/user";
+        var res = await JsonClient.DeleteAsync($"{route}/{article._id}");
+        if(res.IsSuccessStatusCode)
+        {
+            articles.RemoveAt(articles.IndexOf(article));
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error deleting article");
+        }
+    }
+
+    async void ChangeItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles" : "http://localhost:3000/user";
+        var res = await JsonClient.PutAsJsonAsync($"{route}/{article._id}", article);
+        if(res.IsSuccessStatusCode)
+        {
+            var articleOriginal = articles.FirstOrDefault(x => x._id == article._id);
+            if (articleOriginal == null)
+            {
+                AddItem(article);
+                Logger.LogError("New Article in PUT");
+                return;
+            }
+            var index = articles.IndexOf(articleOriginal);
+            articles[index] = article;
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error changing article");
+        }
     }
 
     async void ShowDeleteArticleForm(Article article)
@@ -164,6 +210,6 @@ else
         public string author { get; set; } = "";
         public string authorUsername { get; set; } = "";
         public DateTime publishingDate { get; set; }
-        public bool editable => authorUsername == "admin" || authorUsername == AuthService.UserName;
+        public bool editable => AuthService.UserName == "admin" || authorUsername == AuthService.UserName;
     }
 }
