@@ -85,11 +85,7 @@ else
         if(res.IsSuccessStatusCode)
         {
             var str = await res.Content.ReadAsStringAsync();
-            Logger.LogInformation(str);
-            Logger.LogInformation((str.LastIndexOf("{\"_id\":\"")).ToString());
-            Logger.LogInformation((str.IndexOf("\",\"")).ToString());
             var id = str[(str.LastIndexOf("{\"_id\":\"") + 8)..(str.IndexOf("\",\""))];
-            Logger.LogInformation(id);
             article._id = id;
             articles.Add(article);
             StateHasChanged();

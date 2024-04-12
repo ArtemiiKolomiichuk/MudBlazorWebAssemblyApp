@@ -2,6 +2,7 @@
 {
     using Microsoft.JSInterop;
     using System.Net.Http.Headers;
+    using System.Net.Http.Json;
 
     public class LocalStorageService(IJSRuntime jsRuntime)
     {
@@ -86,6 +87,14 @@
             await localStorage.AddItem("token", token);
             await localStorage.AddItem("userName", userName);
             return true;
+        }
+
+        public async Task<bool> Register(string username, string password)
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            var response = await client.PostAsync("http://localhost:3000/register", JsonContent.Create(new { username, password }));
+            return response.IsSuccessStatusCode;
         }
     }
 }
