@@ -1,4 +1,8 @@
 ﻿@inherits LayoutComponentBase
+@using MudBlazorWebAssemblyApp.Client.Components
+@inject IDialogService DialogService
+@inject MudBlazorWebAssemblyApp.Client.AuthService AuthService
+@inject ISnackbar Snackbar
 
 <MudThemingProvider />
 <MudPopoverProvider />
@@ -10,7 +14,19 @@
 		<MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
         <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+        @if (string.IsNullOrWhiteSpace(AuthService.UserName))
+        {
+            <MudButton Variant
+            ="Variant.Filled" Color
+            ="Color.Success" OnClick
+            ="ShowLoginDialog" Class
+            ="mr-2">Login</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ShowSignupDialog">Sign Up</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Logout">Logout</MudButton>
+        }
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu />
@@ -26,5 +42,38 @@
     private void DrawerToggle()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    async void ShowLoginDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<LoginDialog>("Login", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var res = result.Data as string;
+            if (res != null)
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    void Logout()
+    {
+        AuthService.LogOut();
+        StateHasChanged();
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+        Snackbar.Add("You was successfully logged out!", Severity.Success);
+    }
+
+    async void ShowSignupDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<SignupDialog>("Signup", options);
+        var result = await dialog.Result;
     }
 }

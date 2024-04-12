@@ -9,6 +9,8 @@ builder.Services.AddRazorComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddMudServices();
+builder.Services.AddScoped<MudBlazorWebAssemblyApp.Client.LocalStorageService>();
+builder.Services.AddScoped<MudBlazorWebAssemblyApp.Client.AuthService>();
 
 var app = builder.Build();
 
