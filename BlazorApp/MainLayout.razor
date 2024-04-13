@@ -1,0 +1,78 @@
+﻿@inherits LayoutComponentBase
+@using Components
+@inject IDialogService DialogService
+@inject AuthService AuthService
+@inject ISnackbar Snackbar
+@inject RefreshService RefreshService
+
+<HeadContent>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+</HeadContent>
+
+<MudThemingProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
+        <MudSpacer />
+        @if (string.IsNullOrWhiteSpace(AuthService.UserName))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ShowLoginDialog" Class="mr-2">Login</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="ShowSignupDialog">Sign Up</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Logout">Logout</MudButton>
+        }
+    </MudAppBar>
+    <MudMainContent Class="mt-16 pa-4">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.Init();
+        RefreshService.RefreshRequested += StateHasChanged;
+    }
+
+    async void ShowLoginDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<LoginDialog>("Login", options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var res = result.Data as string;
+            if (res != null)
+            {
+                RefreshService.CallRequestRefresh();
+            }
+        }
+    }
+
+    void Logout()
+    {
+        AuthService.LogOut();
+        RefreshService.CallRequestRefresh();
+        Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+        Snackbar.Add("You was successfully logged out!", Severity.Success);
+    }
+
+    async void ShowSignupDialog()
+    {
+        var parameters = new DialogParameters();
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<SignupDialog>("Signup", options);
+        var result = await dialog.Result;
+    }
+}

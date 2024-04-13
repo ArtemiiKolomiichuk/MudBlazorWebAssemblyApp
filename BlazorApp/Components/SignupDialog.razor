@@ -1,0 +1,49 @@
+﻿@inject AuthService AuthService
+@inject ISnackbar Snackbar
+
+<MudDialog ContentStyle="width: 400px;">
+    <DialogContent>
+        <MudForm @ref=form>
+            <MudTextField @bind-Value="Username" Label="Username" Required="true" />
+            <MudTextField @bind-Value="Password" Label="Password" Required="true" InputType="InputType.Password" />
+            <MudTextField @bind-Value="RepeatPassword" Label="RepeatPassword" Required="true" InputType="InputType.Password" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Validate">Signup</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    MudForm form;
+    public string Username { get; set; }
+    public string Password { get; set; }
+    public string RepeatPassword { get; set; }
+
+    async void Validate()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (Password != RepeatPassword)
+            {
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+                Snackbar.Add("Passwords are not the same!", Severity.Error);
+                return;
+            }
+            if (!await AuthService.Register(Username, Password))
+            {
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+                Snackbar.Add("You wasn't registered!", Severity.Error);
+                return;
+            }
+            Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+            Snackbar.Add("You was successfully registered!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok("Registered in"));
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

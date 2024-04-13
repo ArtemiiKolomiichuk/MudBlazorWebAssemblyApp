@@ -1,0 +1,218 @@
+﻿@page "/"
+@using System.Collections.ObjectModel
+@using System.Linq
+@inject IDialogService DialogService
+@using Components
+@inject IJSRuntime JSRuntime
+@inject AuthService AuthService
+@inject ILogger<Weather> Logger
+@inject RefreshService RefreshService
+
+<PageTitle>Articles</PageTitle>
+
+
+<MudText Typo="Typo.h3" GutterBottom="true">Articles  
+    @if (!string.IsNullOrWhiteSpace(AuthService.UserName))
+    {
+        <MudButton OnClick="@(() => ShowArticleDialog(null))" Color="@Color.Success" Variant="Variant.Filled" Class="add-item-btn">Add Item</MudButton>
+    }
+</MudText>
+
+@if (articles == null)
+{
+    <MudProgressCircular Color="Color.Default" Indeterminate="true" />
+}
+else
+{
+    <MudDataGrid T="Article" Items="articles" Hover="true" Striped="true" Bordered="true" SortMode="SortMode.Single" Elevation="0">
+        <Columns>
+            @if (AuthService.UserName == "admin")
+            {
+                <PropertyColumn Property="x => x._id" Title="ID" />
+            }
+            <PropertyColumn Property="x => x.title" Title="Title"/>
+            <PropertyColumn Property="x => x.author" Title="Author" />
+            <PropertyColumn Property="x => x.authorUsername" Title="Author Username" />
+            <PropertyColumn Property="x => x.content" Title="Content" />
+            <PropertyColumn Property="x => DateToString(x.publishingDate)" Title="Published" />
+            <TemplateColumn Title="Actions" SortBy="@(x => (x.editable ? "1" : "0"))">
+                <CellTemplate>
+                    @if (context.Item.editable)
+                    {
+                        <MudButton OnClick="@((e) => ShowDeleteArticleForm(context.Item))" Variant="Variant.Filled" Color="Color.Error">Delete</MudButton>
+                        <MudButton OnClick="@((e) => ShowArticleDialog(context.Item))" Variant="Variant.Filled" Color="Color.Primary">Edit</MudButton>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="Article" PageSizeOptions="new int[]{10, 20}" />
+        </PagerContent>
+    </MudDataGrid>
+}
+
+
+@code {
+    private ObservableCollection<Article> articles = new ObservableCollection<Article>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var Http = new HttpClient();
+        var articles = await Http.GetFromJsonAsync<Article[]>("http://localhost:3000/articles");
+        if(articles != null)
+        {
+            this.articles = new ObservableCollection<Article>(articles);
+        }
+        foreach(var article in this.articles)
+        {
+            article.AuthService = AuthService;
+        }
+        RefreshService.RefreshRequested += StateHasChanged;
+    }
+
+    public static string DateToString(DateTime date)
+    {
+        return date.ToString("dd.MM.yyyy HH:mm");
+    }
+
+    private HttpClient JsonClient
+    {
+        get
+        {
+            var client = AuthService.Client;
+            client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            return client;
+        }
+    }
+
+    async void AddItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles/" : "http://localhost:3000/user/";
+        var res = await JsonClient.PostAsJsonAsync(route, article);
+        if(res.IsSuccessStatusCode)
+        {
+            var str = await res.Content.ReadAsStringAsync();
+            var id = str[(str.LastIndexOf("{\"_id\":\"") + 8)..(str.IndexOf("\",\""))];
+            article._id = id;
+            articles.Add(article);
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error adding article");
+        }
+    }
+
+    async void RemoveItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles" : "http://localhost:3000/user";
+        var res = await JsonClient.DeleteAsync($"{route}/{article._id}");
+        if(res.IsSuccessStatusCode)
+        {
+            articles.RemoveAt(articles.IndexOf(article));
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error deleting article");
+        }
+    }
+
+    async void ChangeItem(Article article)
+    {
+        var route = AuthService.UserName == "admin" ? "http://localhost:3000/articles" : "http://localhost:3000/user";
+        var res = await JsonClient.PutAsJsonAsync($"{route}/{article._id}", article);
+        if(res.IsSuccessStatusCode)
+        {
+            var articleOriginal = articles.FirstOrDefault(x => x._id == article._id);
+            if (articleOriginal == null)
+            {
+                AddItem(article);
+                Logger.LogError("New Article in PUT");
+                return;
+            }
+            var index = articles.IndexOf(articleOriginal);
+            articles[index] = article;
+            StateHasChanged();
+        }
+        else
+        {
+            Logger.LogError("Error changing article");
+        }
+    }
+
+    async void ShowDeleteArticleForm(Article article)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ContentText", "Do you really want to delete this article? This process cannot be undone.");
+        parameters.Add("ButtonText", "Delete");
+        parameters.Add("Color", Color.Error);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<DialogTextContent>("Delete", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            RemoveItem(article);
+        }
+    }
+
+    async void ShowArticleDialog(Article? article)
+    {
+        if(article == null)
+        {
+            article = new Article();
+            article.publishingDate = DateTime.Now;
+            article.authorUsername = AuthService.UserName;
+        }
+        else
+        {
+            article = new Article()
+            {
+                _id = article._id,
+                title = article.title,
+                content = article.content,
+                author = article.author,
+                authorUsername = article.authorUsername,
+                publishingDate = article.publishingDate
+            };
+        }
+        var parameters = new DialogParameters();
+        parameters.Add("article", article);
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<ArticleDialog>(article._id == "" ? "Add article" : "Edit article" , parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            article = result.Data as Article;
+            if (article != null)
+            {
+                article.AuthService = AuthService;
+                if (article._id == "")
+                {
+                    AddItem(article);
+                }
+                else
+                {
+                    ChangeItem(article);
+                }
+            }
+        }
+    }
+
+    public record Article
+    {
+        public AuthService AuthService { get; set; }
+
+        public string _id { get; set; } = "";
+        public string title { get; set; } = "";
+        public string content { get; set; } = "";
+        public string author { get; set; } = "";
+        public string authorUsername { get; set; } = "";
+        public DateTime publishingDate { get; set; }
+        public bool editable => AuthService.UserName == "admin" || authorUsername == AuthService.UserName;
+    }
+}

@@ -1,0 +1,41 @@
+﻿@using static MainLayout
+@inject AuthService AuthService
+@inject ISnackbar Snackbar
+
+<MudDialog ContentStyle="width: 400px;">
+    <DialogContent>
+        <MudForm @ref=form>
+            <MudTextField @bind-Value="Username" Label="Username" Required="true" />
+            <MudTextField @bind-Value="Password" Label="Password" Required="true" InputType="InputType.Password"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Validate">Login</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    MudForm form;
+    public string Username { get; set; }
+    public string Password { get; set; }
+
+    async void Validate()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (!await AuthService.LogIn(Username, Password))
+            {
+                Snackbar.Configuration.PositionClass = Defaults.Classes.Position.BottomLeft;
+                Snackbar.Add("Incorrect login or password!", Severity.Error);
+                return;
+            }
+
+            MudDialog.Close(DialogResult.Ok("Logged in"));
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

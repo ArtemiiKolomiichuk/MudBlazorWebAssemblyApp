@@ -1,0 +1,37 @@
+﻿@using static Pages.Weather
+
+<MudDialog ContentStyle="width: 400px;">
+    <DialogContent>
+        <MudForm @ref=form>
+            <MudTextField Label="Title" @bind-Value="article.title" Required="true"/>
+            <MudTextField Label="Author" @bind-Value="article.author" Required="true" />
+            <MudTextField Label="Author Username" @bind-Value="article.authorUsername" Disabled="true"/>
+            <MudTextField Label="Published" Value="@(DateToString(article.publishingDate))" Disabled="true" />
+            <MudTextField Label="Content" @bind-Value="article.content" AutoGrow MaxLines="10" Required="true" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Success" Variant="Variant.Filled" OnClick="Validate">@(Edit ? "Save" : "Add")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public Article article { get; set; }
+    MudForm form;
+
+    private bool Edit => article._id != "";
+
+    async void Validate()
+    {
+        await form.Validate();
+        if(form.IsValid)
+        {
+            Submit();
+        }
+    }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(article));
+    void Cancel() => MudDialog.Cancel();
+}
