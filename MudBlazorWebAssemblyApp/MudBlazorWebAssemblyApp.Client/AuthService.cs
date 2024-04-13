@@ -32,7 +32,7 @@
         private string userName = "";
 
         private bool initialized = false;
-        private async void Init()
+        public async Task Init()
         {
             if (initialized)
                 return;

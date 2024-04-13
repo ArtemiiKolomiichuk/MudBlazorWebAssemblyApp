@@ -33,6 +33,12 @@
 </MudLayout>
 
 @code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.Init();
+    }
+
     async void ShowLoginDialog()
     {
         var parameters = new DialogParameters();
